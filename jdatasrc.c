@@ -36,6 +36,19 @@ typedef struct {
 
 typedef my_source_mgr *my_src_ptr;
 
+/* Expanded data source object for custom input */
+
+typedef struct {
+  struct jpeg_source_mgr pub;   /* public fields */
+
+  custom_source_func func;      /* custom func */
+  void *custom_stuff;           /* custom stuff passed to custom func */
+  JOCTET *buffer;               /* start of buffer */
+  boolean start_of_read;        /* have we gotten any data yet? */
+} my_custom_source_mgr;
+
+typedef my_custom_source_mgr * my_custom_src_ptr;
+
 #define INPUT_BUF_SIZE  4096    /* choose an efficiently fread'able size */
 
 
@@ -54,6 +67,18 @@ init_source (j_decompress_ptr cinfo)
    * This is correct behavior for reading a series of images from one source.
    */
   src->start_of_file = TRUE;
+}
+
+METHODDEF(void)
+init_custom_source (j_decompress_ptr cinfo)
+{
+  my_custom_src_ptr src = (my_custom_src_ptr) cinfo->src;
+
+  /* We reset the empty-input-file flag for each image,
+   * but we don't clear the input buffer.
+   * This is correct behavior for reading a series of images from one source.
+   */
+  src->start_of_read = TRUE;
 }
 
 #if JPEG_LIB_VERSION >= 80 || defined(MEM_SRCDST_SUPPORTED)
@@ -119,6 +144,31 @@ fill_input_buffer (j_decompress_ptr cinfo)
   src->pub.next_input_byte = src->buffer;
   src->pub.bytes_in_buffer = nbytes;
   src->start_of_file = FALSE;
+
+  return TRUE;
+}
+
+METHODDEF(boolean)
+fill_custom_input_buffer (j_decompress_ptr cinfo)
+{
+  my_custom_src_ptr src = (my_custom_src_ptr) cinfo->src;
+  size_t nbytes;
+
+  nbytes = src->func(src->custom_stuff, src->buffer, INPUT_BUF_SIZE);
+
+  if (nbytes <= 0) {
+    if (src->start_of_read)     /* Treat empty input file as fatal error */
+      ERREXIT(cinfo, JERR_INPUT_EMPTY);
+    WARNMS(cinfo, JWRN_JPEG_EOF);
+    /* Insert a fake EOI marker */
+    src->buffer[0] = (JOCTET) 0xFF;
+    src->buffer[1] = (JOCTET) JPEG_EOI;
+    nbytes = 2;
+  }
+
+  src->pub.next_input_byte = src->buffer;
+  src->pub.bytes_in_buffer = nbytes;
+  src->start_of_read = FALSE;
 
   return TRUE;
 }
@@ -248,6 +298,53 @@ jpeg_stdio_src (j_decompress_ptr cinfo, FILE *infile)
   src->pub.resync_to_restart = jpeg_resync_to_restart; /* use default method */
   src->pub.term_source = term_source;
   src->infile = infile;
+  src->pub.bytes_in_buffer = 0; /* forces fill_input_buffer on first read */
+  src->pub.next_input_byte = NULL; /* until buffer loaded */
+}
+
+
+/*
+ * Prepare for input from a custom stream.
+ * The caller must have already opened the stream, and is responsible
+ * for closing it after finishing decompression.
+ */
+
+GLOBAL(void)
+jpeg_custom_src (j_decompress_ptr cinfo, custom_source_func func, void *custom_stuff)
+{
+  my_custom_src_ptr src;
+
+  /* The source object and input buffer are made permanent so that a series
+   * of JPEG images can be read from the same file by calling jpeg_custom_src
+   * only before the first one.  (If we discarded the buffer at the end of
+   * one image, we'd likely lose the start of the next one.)
+   */
+  if (cinfo->src == NULL) {     /* first time for this JPEG object? */
+    cinfo->src = (struct jpeg_source_mgr *)
+      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+                                  sizeof(my_custom_source_mgr));
+    src = (my_custom_src_ptr) cinfo->src;
+    src->buffer = (JOCTET *)
+      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+                                  INPUT_BUF_SIZE * sizeof(JOCTET));
+  } else if (cinfo->src->init_source != init_source) {
+    /* It is unsafe to reuse the existing source manager unless it was created
+     * by this function.  Otherwise, there is no guarantee that the opaque
+     * structure is the right size.  Note that we could just create a new
+     * structure, but the old structure would not be freed until
+     * jpeg_destroy_decompress() was called.
+     */
+    ERREXIT(cinfo, JERR_BUFFER_SIZE);
+  }
+
+  src = (my_custom_src_ptr) cinfo->src;
+  src->pub.init_source = init_custom_source;
+  src->pub.fill_input_buffer = fill_custom_input_buffer;
+  src->pub.skip_input_data = skip_input_data;
+  src->pub.resync_to_restart = jpeg_resync_to_restart; /* use default method */
+  src->pub.term_source = term_source;
+  src->func = func;
+  src->custom_stuff = custom_stuff;
   src->pub.bytes_in_buffer = 0; /* forces fill_input_buffer on first read */
   src->pub.next_input_byte = NULL; /* until buffer loaded */
 }

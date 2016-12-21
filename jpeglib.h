@@ -811,6 +811,11 @@ struct jpeg_source_mgr {
 };
 
 
+/* Custom source function */
+
+typedef size_t (*custom_source_func) (void *custom_stuff, unsigned char *buffer, size_t size);
+
+
 /* Memory manager object.
  * Allocates "small" objects (a few K total), "large" objects (tens of K),
  * and "really big" objects (virtual arrays with backing store if needed).
@@ -915,6 +920,9 @@ EXTERN(void) jpeg_destroy_decompress (j_decompress_ptr cinfo);
 /* Caller is responsible for opening the file before and closing after. */
 EXTERN(void) jpeg_stdio_dest (j_compress_ptr cinfo, FILE *outfile);
 EXTERN(void) jpeg_stdio_src (j_decompress_ptr cinfo, FILE *infile);
+
+/* Custom data source managers */
+EXTERN(void) jpeg_custom_src (j_decompress_ptr cinfo, custom_source_func func, void *custom_stuff);
 
 #if JPEG_LIB_VERSION >= 80 || defined(MEM_SRCDST_SUPPORTED)
 /* Data source and destination managers: memory buffers. */
