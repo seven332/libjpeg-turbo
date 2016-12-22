@@ -327,7 +327,7 @@ jpeg_custom_src (j_decompress_ptr cinfo, custom_source_func func, void *custom_s
     src->buffer = (JOCTET *)
       (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
                                   INPUT_BUF_SIZE * sizeof(JOCTET));
-  } else if (cinfo->src->init_source != init_source) {
+  } else if (cinfo->src->init_source != init_custom_source) {
     /* It is unsafe to reuse the existing source manager unless it was created
      * by this function.  Otherwise, there is no guarantee that the opaque
      * structure is the right size.  Note that we could just create a new
