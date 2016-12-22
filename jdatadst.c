@@ -40,6 +40,18 @@ typedef struct {
 
 typedef my_destination_mgr *my_dest_ptr;
 
+/* Expanded data destination object for custom output */
+
+typedef struct {
+  struct jpeg_destination_mgr pub; /* public fields */
+
+  custom_destination_func func; /* custom func */
+  void *custom_stuff;           /* custom stuff passed to custom func */
+  JOCTET *buffer;               /* start of buffer */
+} my_custom_destination_mgr;
+
+typedef my_custom_destination_mgr *my_custom_dest_ptr;
+
 #define OUTPUT_BUF_SIZE  4096   /* choose an efficiently fwrite'able size */
 
 
@@ -69,6 +81,20 @@ METHODDEF(void)
 init_destination (j_compress_ptr cinfo)
 {
   my_dest_ptr dest = (my_dest_ptr) cinfo->dest;
+
+  /* Allocate the output buffer --- it will be released when done with image */
+  dest->buffer = (JOCTET *)
+      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+                                  OUTPUT_BUF_SIZE * sizeof(JOCTET));
+
+  dest->pub.next_output_byte = dest->buffer;
+  dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
+}
+
+METHODDEF(void)
+init_custom_destination (j_compress_ptr cinfo)
+{
+  my_custom_dest_ptr dest = (my_custom_dest_ptr) cinfo->dest;
 
   /* Allocate the output buffer --- it will be released when done with image */
   dest->buffer = (JOCTET *)
@@ -117,6 +143,21 @@ empty_output_buffer (j_compress_ptr cinfo)
   my_dest_ptr dest = (my_dest_ptr) cinfo->dest;
 
   if (JFWRITE(dest->outfile, dest->buffer, OUTPUT_BUF_SIZE) !=
+      (size_t) OUTPUT_BUF_SIZE)
+    ERREXIT(cinfo, JERR_FILE_WRITE);
+
+  dest->pub.next_output_byte = dest->buffer;
+  dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
+
+  return TRUE;
+}
+
+METHODDEF(boolean)
+empty_custom_output_buffer (j_compress_ptr cinfo)
+{
+  my_custom_dest_ptr dest = (my_custom_dest_ptr) cinfo->dest;
+
+  if (dest->func(dest->custom_stuff, dest->buffer, OUTPUT_BUF_SIZE) !=
       (size_t) OUTPUT_BUF_SIZE)
     ERREXIT(cinfo, JERR_FILE_WRITE);
 
@@ -185,6 +226,19 @@ term_destination (j_compress_ptr cinfo)
     ERREXIT(cinfo, JERR_FILE_WRITE);
 }
 
+METHODDEF(void)
+term_custom_destination (j_compress_ptr cinfo)
+{
+  my_custom_dest_ptr dest = (my_custom_dest_ptr) cinfo->dest;
+  size_t datacount = OUTPUT_BUF_SIZE - dest->pub.free_in_buffer;
+
+  /* Write any data remaining in the buffer */
+  if (datacount > 0) {
+    if (dest->func(dest->custom_stuff, dest->buffer, datacount) != datacount)
+      ERREXIT(cinfo, JERR_FILE_WRITE);
+  }
+}
+
 #if JPEG_LIB_VERSION >= 80 || defined(MEM_SRCDST_SUPPORTED)
 METHODDEF(void)
 term_mem_destination (j_compress_ptr cinfo)
@@ -230,6 +284,43 @@ jpeg_stdio_dest (j_compress_ptr cinfo, FILE *outfile)
   dest->pub.empty_output_buffer = empty_output_buffer;
   dest->pub.term_destination = term_destination;
   dest->outfile = outfile;
+}
+
+
+/*
+ * Prepare for output to a custom stream.
+ * The caller must have already opened the stream, and is responsible
+ * for closing it after finishing compression.
+ */
+
+GLOBAL(void)
+jpeg_custom_dest (j_compress_ptr cinfo, custom_destination_func func, void *custom_stuff)
+{
+  my_custom_dest_ptr dest;
+
+  /* The destination object is made permanent so that multiple JPEG images
+   * can be written to the same file without re-executing jpeg_custom_dest.
+   */
+  if (cinfo->dest == NULL) {    /* first time for this JPEG object? */
+    cinfo->dest = (struct jpeg_destination_mgr *)
+      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+                                  sizeof(my_custom_destination_mgr));
+  } else if (cinfo->dest->init_destination != init_custom_destination) {
+    /* It is unsafe to reuse the existing destination manager unless it was
+     * created by this function.  Otherwise, there is no guarantee that the
+     * opaque structure is the right size.  Note that we could just create a
+     * new structure, but the old structure would not be freed until
+     * jpeg_destroy_compress() was called.
+     */
+    ERREXIT(cinfo, JERR_BUFFER_SIZE);
+  }
+
+  dest = (my_custom_dest_ptr) cinfo->dest;
+  dest->pub.init_destination = init_custom_destination;
+  dest->pub.empty_output_buffer = empty_custom_output_buffer;
+  dest->pub.term_destination = term_custom_destination;
+  dest->func = func;
+  dest->custom_stuff = custom_stuff;
 }
 
 

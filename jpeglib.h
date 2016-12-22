@@ -811,8 +811,9 @@ struct jpeg_source_mgr {
 };
 
 
-/* Custom source function */
+/* Custom destination and source function */
 
+typedef size_t (*custom_destination_func) (void *custom_stuff, unsigned char *buffer, size_t size);
 typedef size_t (*custom_source_func) (void *custom_stuff, unsigned char *buffer, size_t size);
 
 
@@ -922,6 +923,7 @@ EXTERN(void) jpeg_stdio_dest (j_compress_ptr cinfo, FILE *outfile);
 EXTERN(void) jpeg_stdio_src (j_decompress_ptr cinfo, FILE *infile);
 
 /* Custom data source managers */
+EXTERN(void) jpeg_custom_dest (j_compress_ptr cinfo, custom_destination_func func, void *custom_stuff);
 EXTERN(void) jpeg_custom_src (j_decompress_ptr cinfo, custom_source_func func, void *custom_stuff);
 
 #if JPEG_LIB_VERSION >= 80 || defined(MEM_SRCDST_SUPPORTED)
