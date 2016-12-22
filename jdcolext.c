@@ -141,3 +141,42 @@ rgb_rgb_convert_internal (j_decompress_ptr cinfo,
     }
   }
 }
+
+
+/*
+ * Convert CMYK to extended RGB
+ */
+
+INLINE
+LOCAL(void)
+cmyk_rgb_convert_internal (j_decompress_ptr cinfo,
+                           JSAMPIMAGE input_buf, JDIMENSION input_row,
+                           JSAMPARRAY output_buf, int num_rows)
+{
+  register int k;
+  register JSAMPROW inptr0, inptr1, inptr2, inptr3;
+  register JSAMPROW outptr;
+  register JDIMENSION col;
+  JDIMENSION num_cols = cinfo->output_width;
+
+  while (--num_rows >= 0) {
+    inptr0 = input_buf[0][input_row];
+    inptr1 = input_buf[1][input_row];
+    inptr2 = input_buf[2][input_row];
+    inptr3 = input_buf[3][input_row];
+    input_row++;
+    outptr = *output_buf++;
+    for (col = 0; col < num_cols; col++) {
+      k = GETJSAMPLE(inptr3[col]);
+      outptr[RGB_RED] = (JSAMPLE) (GETJSAMPLE(inptr0[col]) * k / MAXJSAMPLE);
+      outptr[RGB_GREEN] = (JSAMPLE) (GETJSAMPLE(inptr1[col]) * k / MAXJSAMPLE);
+      outptr[RGB_BLUE] = (JSAMPLE) (GETJSAMPLE(inptr2[col]) * k / MAXJSAMPLE);
+      /* Set unused byte to 0xFF so it can be interpreted as an opaque */
+      /* alpha channel value */
+#ifdef RGB_ALPHA
+      outptr[RGB_ALPHA] = 0xFF;
+#endif
+      outptr += RGB_PIXELSIZE;
+    }
+  }
+}
