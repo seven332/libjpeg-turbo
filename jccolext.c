@@ -146,3 +146,55 @@ rgb_rgb_convert_internal (j_compress_ptr cinfo,
     }
   }
 }
+
+
+/*
+ * Convert some rows of samples to the JPEG colorspace.
+ * This version handles extended RGB->CMYK conversion
+ */
+
+INLINE
+LOCAL(void)
+rgb_cmyk_convert_internal (j_compress_ptr cinfo,
+                           JSAMPARRAY input_buf, JSAMPIMAGE output_buf,
+                           JDIMENSION output_row, int num_rows)
+{
+  register int r, g, b;
+  register int c, m, y, k;
+  register JSAMPROW inptr;
+  register JSAMPROW outptr0, outptr1, outptr2, outptr3;
+  register JDIMENSION col;
+  JDIMENSION num_cols = cinfo->image_width;
+
+  while (--num_rows >= 0) {
+    inptr = *input_buf++;
+    outptr0 = output_buf[0][output_row];
+    outptr1 = output_buf[1][output_row];
+    outptr2 = output_buf[2][output_row];
+    outptr3 = output_buf[3][output_row];
+    output_row++;
+    for (col = 0; col < num_cols; col++) {
+      r = GETJSAMPLE(inptr[RGB_RED]);
+      g = GETJSAMPLE(inptr[RGB_GREEN]);
+      b = GETJSAMPLE(inptr[RGB_BLUE]);
+      inptr += RGB_PIXELSIZE;
+
+      k = MAX(r, g);
+      k = MAX(b, k);
+      if (k == 0) {
+        c = 0;
+        m = 0;
+        y = 0;
+      } else {
+        c = r * MAXJSAMPLE / k;
+        m = g * MAXJSAMPLE / k;
+        y = b * MAXJSAMPLE / k;
+      }
+
+      outptr0[col] = c;
+      outptr1[col] = m;
+      outptr2[col] = y;
+      outptr3[col] = k;
+    }
+  }
+}
