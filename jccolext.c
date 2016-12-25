@@ -198,3 +198,75 @@ rgb_cmyk_convert_internal (j_compress_ptr cinfo,
     }
   }
 }
+
+
+/*
+ * Convert some rows of samples to the JPEG colorspace.
+ * This version handles extended RGB->YCCK conversion
+ */
+
+INLINE
+LOCAL(void)
+rgb_ycck_convert_internal (j_compress_ptr cinfo,
+                           JSAMPARRAY input_buf, JSAMPIMAGE output_buf,
+                           JDIMENSION output_row, int num_rows)
+{
+  my_cconvert_ptr cconvert = (my_cconvert_ptr) cinfo->cconvert;
+  register int r, g, b;
+  register int y, cb, cr, k;
+  register JLONG * ctab = cconvert->rgb_ycc_tab;
+  register JSAMPROW inptr;
+  register JSAMPROW outptr0, outptr1, outptr2, outptr3;
+  register JDIMENSION col;
+  JDIMENSION num_cols = cinfo->image_width;
+
+  while (--num_rows >= 0) {
+    inptr = *input_buf++;
+    outptr0 = output_buf[0][output_row];
+    outptr1 = output_buf[1][output_row];
+    outptr2 = output_buf[2][output_row];
+    outptr3 = output_buf[3][output_row];
+    output_row++;
+    for (col = 0; col < num_cols; col++) {
+      r = GETJSAMPLE(inptr[RGB_RED]);
+      g = GETJSAMPLE(inptr[RGB_GREEN]);
+      b = GETJSAMPLE(inptr[RGB_BLUE]);
+      inptr += RGB_PIXELSIZE;
+
+      k = MAX(r, g);
+      k = MAX(b, k);
+      if (k == 0) {
+        y  = 0;
+        cb = 0;
+        cr = 0;
+      } else {
+        r = MAXJSAMPLE - (r * MAXJSAMPLE / k);
+        g = MAXJSAMPLE - (g * MAXJSAMPLE / k);
+        b = MAXJSAMPLE - (b * MAXJSAMPLE / k);
+        /* Avoid negative value */
+        if (r < 0) r = 0;
+        if (g < 0) g = 0;
+        if (b < 0) b = 0;
+        /* If the inputs are 0..MAXJSAMPLE, the outputs of these equations
+         * must be too; we do not need an explicit range-limiting operation.
+         * Hence the value being shifted is never negative, and we don't
+         * need the general RIGHT_SHIFT macro.
+         */
+        y  = (JSAMPLE)
+                 ((ctab[r+R_Y_OFF] + ctab[g+G_Y_OFF] + ctab[b+B_Y_OFF])
+                  >> SCALEBITS);
+        cb = (JSAMPLE)
+                 ((ctab[r+R_CB_OFF] + ctab[g+G_CB_OFF] + ctab[b+B_CB_OFF])
+                  >> SCALEBITS);
+        cr = (JSAMPLE)
+                 ((ctab[r+R_CR_OFF] + ctab[g+G_CR_OFF] + ctab[b+B_CR_OFF])
+                  >> SCALEBITS);
+      }
+
+      outptr0[col] = y;
+      outptr1[col] = cb;
+      outptr2[col] = cr;
+      outptr3[col] = k;
+    }
+  }
+}
