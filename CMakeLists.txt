@@ -557,6 +557,56 @@ foreach(libtype ${TEST_LIBTYPES})
       ${MD5CMP} ${MD5_BMP_RGB_ISLOW_565D} testout_rgb_islow_565D.bmp)
   endif()
 
+  # CC: RGB->CMYK  SAMP: fullsize/h2v1  FDCT: ifast  ENT: 2-pass huff
+  add_test(cjpeg${suffix}-422-ifast-opt-cmyk
+    ${dir}cjpeg${suffix} -sample 2x1 -dct fast -opt -cmyk
+      -outfile testout_422_ifast_opt_cmyk.jpg ${TESTIMAGES}/testorig.ppm)
+
+  # CC: CMYK->RGB  SAMP: fullsize/h2v1 fancy  IDCT: ifast  ENT: huff
+  add_test(djpeg${suffix}-422-ifast-cmyk
+    ${dir}djpeg${suffix} -dct fast -rgb
+      -outfile testout_422_ifast_cmyk.ppm testout_422_ifast_opt_cmyk.jpg)
+
+  # CC: CMYK->RGB  SAMP: h2v1 merged  IDCT: ifast  ENT: huff
+  add_test(djpeg${suffix}-422m-ifast-cmyk
+    ${dir}djpeg${suffix} -dct fast -nosmooth -rgb
+      -outfile testout_422m_ifast_cmyk.ppm testout_422_ifast_opt_cmyk.jpg)
+
+  # CC: CMYK->RGB565  SAMP: h2v1 merged  IDCT: ifast  ENT: huff  DITHER: none
+  add_test(djpeg${suffix}-422m-ifast-565-cmyk
+    ${dir}djpeg${suffix} -dct int -nosmooth -rgb565 -dither none -bmp
+      -outfile testout_422m_ifast_565_cmyk.bmp testout_422_ifast_opt_cmyk.jpg)
+
+  # CC: CMYK->RGB565  SAMP: h2v1 merged  IDCT: ifast  ENT: huff  DITHER: ordered
+  add_test(djpeg${suffix}-422m-ifast-565D-cmyk
+    ${dir}djpeg${suffix} -dct int -nosmooth -rgb565 -dither ordered -bmp
+      -outfile testout_422m_ifast_565D_cmyk.bmp testout_422_ifast_opt_cmyk.jpg)
+
+  # CC: RGB->YCCK  SAMP: fullsize/h2v1  FDCT: ifast  ENT: 2-pass huff
+  add_test(cjpeg${suffix}-422-ifast-opt-ycck
+    ${dir}cjpeg${suffix} -sample 2x1 -dct fast -opt -ycck
+      -outfile testout_422_ifast_opt_ycck.jpg ${TESTIMAGES}/testorig.ppm)
+
+  # CC: YCCK->RGB  SAMP: fullsize/h2v1 fancy  IDCT: ifast  ENT: huff
+  add_test(djpeg${suffix}-422-ifast-ycck
+    ${dir}djpeg${suffix} -dct fast -rgb
+      -outfile testout_422_ifast_ycck.ppm testout_422_ifast_opt_ycck.jpg)
+
+  # CC: YCCK->RGB  SAMP: h2v1 merged  IDCT: ifast  ENT: huff
+  add_test(djpeg${suffix}-422m-ifast-ycck
+    ${dir}djpeg${suffix} -dct fast -nosmooth -rgb
+      -outfile testout_422m_ifast_ycck.ppm testout_422_ifast_opt_ycck.jpg)
+
+  # CC: YCCK->RGB565  SAMP: h2v1 merged  IDCT: ifast  ENT: huff  DITHER: none
+  add_test(djpeg${suffix}-422m-ifast-565-ycck
+    ${dir}djpeg${suffix} -dct int -nosmooth -rgb565 -dither none -bmp
+      -outfile testout_422m_ifast_565_ycck.bmp testout_422_ifast_opt_ycck.jpg)
+
+  # CC: YCCK->RGB565  SAMP: h2v1 merged  IDCT: ifast  ENT: huff  DITHER: ordered
+  add_test(djpeg${suffix}-422m-ifast-565D-ycck
+    ${dir}djpeg${suffix} -dct int -nosmooth -rgb565 -dither ordered -bmp
+      -outfile testout_422m_ifast_565D_ycck.bmp testout_422_ifast_opt_ycck.jpg)
+
   # CC: RGB->YCC  SAMP: fullsize/h2v1  FDCT: ifast  ENT: 2-pass huff
   add_test(cjpeg${suffix}-422-ifast-opt
     ${dir}cjpeg${suffix} -sample 2x1 -dct fast -opt
