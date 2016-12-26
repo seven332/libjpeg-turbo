@@ -315,6 +315,14 @@ parse_switches (j_compress_ptr cinfo, int argc, char **argv,
       /* Force an RGB JPEG file to be generated. */
       jpeg_set_colorspace(cinfo, JCS_RGB);
 
+    } else if (keymatch(arg, "cmyk", 4)) {
+      /* Force an CMYK JPEG file to be generated. */
+      jpeg_set_colorspace(cinfo, JCS_CMYK);
+
+    } else if (keymatch(arg, "ycck", 4)) {
+      /* Force an YCCK JPEG file to be generated. */
+      jpeg_set_colorspace(cinfo, JCS_YCCK);
+
     } else if (keymatch(arg, "maxmemory", 3)) {
       /* Maximum memory in Kb (or Mb with 'm'). */
       long lval;
