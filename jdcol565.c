@@ -382,3 +382,128 @@ gray_rgb565D_convert_internal (j_decompress_ptr cinfo,
     }
   }
 }
+
+
+INLINE
+LOCAL(void)
+cmyk_rgb565_convert_internal (j_decompress_ptr cinfo,
+                              JSAMPIMAGE input_buf, JDIMENSION input_row,
+                              JSAMPARRAY output_buf, int num_rows)
+{
+  register int k;
+  register JSAMPROW outptr;
+  register JSAMPROW inptr0, inptr1, inptr2, inptr3;
+  register JDIMENSION col;
+  JDIMENSION num_cols = cinfo->output_width;
+
+  while (--num_rows >= 0) {
+    JLONG rgb;
+    unsigned int r, g, b;
+    inptr0 = input_buf[0][input_row];
+    inptr1 = input_buf[1][input_row];
+    inptr2 = input_buf[2][input_row];
+    inptr3 = input_buf[3][input_row];
+    input_row++;
+    outptr = *output_buf++;
+
+    if (PACK_NEED_ALIGNMENT(outptr)) {
+      k = GETJSAMPLE(*inptr3++);
+      r = (JSAMPLE) (GETJSAMPLE(*inptr0++) * k / MAXJSAMPLE);
+      g = (JSAMPLE) (GETJSAMPLE(*inptr1++) * k / MAXJSAMPLE);
+      b = (JSAMPLE) (GETJSAMPLE(*inptr2++) * k / MAXJSAMPLE);
+      rgb = PACK_SHORT_565(r, g, b);
+      *(INT16*)outptr = (INT16)rgb;
+      outptr += 2;
+      num_cols--;
+    }
+    for (col = 0; col < (num_cols >> 1); col++) {
+      k = GETJSAMPLE(*inptr3++);
+      r = (JSAMPLE) (GETJSAMPLE(*inptr0++) * k / MAXJSAMPLE);
+      g = (JSAMPLE) (GETJSAMPLE(*inptr1++) * k / MAXJSAMPLE);
+      b = (JSAMPLE) (GETJSAMPLE(*inptr2++) * k / MAXJSAMPLE);
+      rgb = PACK_SHORT_565(r, g, b);
+
+      k = GETJSAMPLE(*inptr3++);
+      r = (JSAMPLE) (GETJSAMPLE(*inptr0++) * k / MAXJSAMPLE);
+      g = (JSAMPLE) (GETJSAMPLE(*inptr1++) * k / MAXJSAMPLE);
+      b = (JSAMPLE) (GETJSAMPLE(*inptr2++) * k / MAXJSAMPLE);
+      rgb = PACK_TWO_PIXELS(rgb, PACK_SHORT_565(r, g, b));
+
+      WRITE_TWO_ALIGNED_PIXELS(outptr, rgb);
+      outptr += 4;
+    }
+    if (num_cols & 1) {
+      k = GETJSAMPLE(*inptr3++);
+      r = (JSAMPLE) (GETJSAMPLE(*inptr0++) * k / MAXJSAMPLE);
+      g = (JSAMPLE) (GETJSAMPLE(*inptr1++) * k / MAXJSAMPLE);
+      b = (JSAMPLE) (GETJSAMPLE(*inptr2++) * k / MAXJSAMPLE);
+      rgb = PACK_SHORT_565(r, g, b);
+      *(INT16*)outptr = (INT16)rgb;
+    }
+  }
+}
+
+
+INLINE
+LOCAL(void)
+cmyk_rgb565D_convert_internal (j_decompress_ptr cinfo,
+                               JSAMPIMAGE input_buf, JDIMENSION input_row,
+                               JSAMPARRAY output_buf, int num_rows)
+{
+  register int k;
+  register JSAMPROW outptr;
+  register JSAMPROW inptr0, inptr1, inptr2, inptr3;
+  register JDIMENSION col;
+  register JSAMPLE * range_limit = cinfo->sample_range_limit;
+  JDIMENSION num_cols = cinfo->output_width;
+  JLONG d0 = dither_matrix[cinfo->output_scanline & DITHER_MASK];
+  SHIFT_TEMPS
+
+  while (--num_rows >= 0) {
+    JLONG rgb;
+    unsigned int r, g, b;
+    inptr0 = input_buf[0][input_row];
+    inptr1 = input_buf[1][input_row];
+    inptr2 = input_buf[2][input_row];
+    inptr3 = input_buf[3][input_row];
+    input_row++;
+    outptr = *output_buf++;
+
+    if (PACK_NEED_ALIGNMENT(outptr)) {
+      k = GETJSAMPLE(*inptr3++);
+      r = range_limit[DITHER_565_R((JSAMPLE) (GETJSAMPLE(*inptr0++) * k / MAXJSAMPLE), d0)];
+      g = range_limit[DITHER_565_G((JSAMPLE) (GETJSAMPLE(*inptr1++) * k / MAXJSAMPLE), d0)];
+      b = range_limit[DITHER_565_B((JSAMPLE) (GETJSAMPLE(*inptr2++) * k / MAXJSAMPLE), d0)];
+      rgb = PACK_SHORT_565(r, g, b);
+      *(INT16*)outptr = (INT16)rgb;
+      outptr += 2;
+      num_cols--;
+    }
+    for (col = 0; col < (num_cols >> 1); col++) {
+      k = GETJSAMPLE(*inptr3++);
+      r = range_limit[DITHER_565_R((JSAMPLE) (GETJSAMPLE(*inptr0++) * k / MAXJSAMPLE), d0)];
+      g = range_limit[DITHER_565_G((JSAMPLE) (GETJSAMPLE(*inptr1++) * k / MAXJSAMPLE), d0)];
+      b = range_limit[DITHER_565_B((JSAMPLE) (GETJSAMPLE(*inptr2++) * k / MAXJSAMPLE), d0)];
+      d0 = DITHER_ROTATE(d0);
+      rgb = PACK_SHORT_565(r, g, b);
+
+      k = GETJSAMPLE(*inptr3++);
+      r = range_limit[DITHER_565_R((JSAMPLE) (GETJSAMPLE(*inptr0++) * k / MAXJSAMPLE), d0)];
+      g = range_limit[DITHER_565_G((JSAMPLE) (GETJSAMPLE(*inptr1++) * k / MAXJSAMPLE), d0)];
+      b = range_limit[DITHER_565_B((JSAMPLE) (GETJSAMPLE(*inptr2++) * k / MAXJSAMPLE), d0)];
+      d0 = DITHER_ROTATE(d0);
+      rgb = PACK_TWO_PIXELS(rgb, PACK_SHORT_565(r, g, b));
+
+      WRITE_TWO_ALIGNED_PIXELS(outptr, rgb);
+      outptr += 4;
+    }
+    if (num_cols & 1) {
+      k = GETJSAMPLE(*inptr3++);
+      r = range_limit[DITHER_565_R((JSAMPLE) (GETJSAMPLE(*inptr0++) * k / MAXJSAMPLE), d0)];
+      g = range_limit[DITHER_565_G((JSAMPLE) (GETJSAMPLE(*inptr1++) * k / MAXJSAMPLE), d0)];
+      b = range_limit[DITHER_565_B((JSAMPLE) (GETJSAMPLE(*inptr2++) * k / MAXJSAMPLE), d0)];
+      rgb = PACK_SHORT_565(r, g, b);
+      *(INT16*)outptr = (INT16)rgb;
+    }
+  }
+}
