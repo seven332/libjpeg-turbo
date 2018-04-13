@@ -47,7 +47,7 @@ typedef struct {
   boolean start_of_read;        /* have we gotten any data yet? */
 } my_custom_source_mgr;
 
-typedef my_custom_source_mgr * my_custom_src_ptr;
+typedef my_custom_source_mgr *my_custom_src_ptr;
 
 #define INPUT_BUF_SIZE  4096    /* choose an efficiently fread'able size */
 
@@ -70,9 +70,9 @@ init_source(j_decompress_ptr cinfo)
 }
 
 METHODDEF(void)
-init_custom_source (j_decompress_ptr cinfo)
+init_custom_source(j_decompress_ptr cinfo)
 {
-  my_custom_src_ptr src = (my_custom_src_ptr) cinfo->src;
+  my_custom_src_ptr src = (my_custom_src_ptr)cinfo->src;
 
   /* We reset the empty-input-file flag for each image,
    * but we don't clear the input buffer.
@@ -149,9 +149,9 @@ fill_input_buffer(j_decompress_ptr cinfo)
 }
 
 METHODDEF(boolean)
-fill_custom_input_buffer (j_decompress_ptr cinfo)
+fill_custom_input_buffer(j_decompress_ptr cinfo)
 {
-  my_custom_src_ptr src = (my_custom_src_ptr) cinfo->src;
+  my_custom_src_ptr src = (my_custom_src_ptr)cinfo->src;
   size_t nbytes;
 
   nbytes = src->func(src->custom_stuff, src->buffer, INPUT_BUF_SIZE);
@@ -161,8 +161,8 @@ fill_custom_input_buffer (j_decompress_ptr cinfo)
       ERREXIT(cinfo, JERR_INPUT_EMPTY);
     WARNMS(cinfo, JWRN_JPEG_EOF);
     /* Insert a fake EOI marker */
-    src->buffer[0] = (JOCTET) 0xFF;
-    src->buffer[1] = (JOCTET) JPEG_EOI;
+    src->buffer[0] = (JOCTET)0xFF;
+    src->buffer[1] = (JOCTET)JPEG_EOI;
     nbytes = 2;
   }
 
@@ -310,7 +310,7 @@ jpeg_stdio_src(j_decompress_ptr cinfo, FILE *infile)
  */
 
 GLOBAL(void)
-jpeg_custom_src (j_decompress_ptr cinfo, custom_source_func func, void *custom_stuff)
+jpeg_custom_src(j_decompress_ptr cinfo, custom_source_func func, void *custom_stuff)
 {
   my_custom_src_ptr src;
 
@@ -321,11 +321,11 @@ jpeg_custom_src (j_decompress_ptr cinfo, custom_source_func func, void *custom_s
    */
   if (cinfo->src == NULL) {     /* first time for this JPEG object? */
     cinfo->src = (struct jpeg_source_mgr *)
-      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+      (*cinfo->mem->alloc_small) ((j_common_ptr)cinfo, JPOOL_PERMANENT,
                                   sizeof(my_custom_source_mgr));
     src = (my_custom_src_ptr) cinfo->src;
     src->buffer = (JOCTET *)
-      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+      (*cinfo->mem->alloc_small) ((j_common_ptr)cinfo, JPOOL_PERMANENT,
                                   INPUT_BUF_SIZE * sizeof(JOCTET));
   } else if (cinfo->src->init_source != init_custom_source) {
     /* It is unsafe to reuse the existing source manager unless it was created
@@ -337,7 +337,7 @@ jpeg_custom_src (j_decompress_ptr cinfo, custom_source_func func, void *custom_s
     ERREXIT(cinfo, JERR_BUFFER_SIZE);
   }
 
-  src = (my_custom_src_ptr) cinfo->src;
+  src = (my_custom_src_ptr)cinfo->src;
   src->pub.init_source = init_custom_source;
   src->pub.fill_input_buffer = fill_custom_input_buffer;
   src->pub.skip_input_data = skip_input_data;

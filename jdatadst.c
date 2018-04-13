@@ -92,13 +92,13 @@ init_destination(j_compress_ptr cinfo)
 }
 
 METHODDEF(void)
-init_custom_destination (j_compress_ptr cinfo)
+init_custom_destination(j_compress_ptr cinfo)
 {
-  my_custom_dest_ptr dest = (my_custom_dest_ptr) cinfo->dest;
+  my_custom_dest_ptr dest = (my_custom_dest_ptr)cinfo->dest;
 
   /* Allocate the output buffer --- it will be released when done with image */
   dest->buffer = (JOCTET *)
-      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
+      (*cinfo->mem->alloc_small) ((j_common_ptr)cinfo, JPOOL_IMAGE,
                                   OUTPUT_BUF_SIZE * sizeof(JOCTET));
 
   dest->pub.next_output_byte = dest->buffer;
@@ -153,12 +153,12 @@ empty_output_buffer(j_compress_ptr cinfo)
 }
 
 METHODDEF(boolean)
-empty_custom_output_buffer (j_compress_ptr cinfo)
+empty_custom_output_buffer(j_compress_ptr cinfo)
 {
-  my_custom_dest_ptr dest = (my_custom_dest_ptr) cinfo->dest;
+  my_custom_dest_ptr dest = (my_custom_dest_ptr)cinfo->dest;
 
   if (dest->func(dest->custom_stuff, dest->buffer, OUTPUT_BUF_SIZE) !=
-      (size_t) OUTPUT_BUF_SIZE)
+      (size_t)OUTPUT_BUF_SIZE)
     ERREXIT(cinfo, JERR_FILE_WRITE);
 
   dest->pub.next_output_byte = dest->buffer;
@@ -227,9 +227,9 @@ term_destination(j_compress_ptr cinfo)
 }
 
 METHODDEF(void)
-term_custom_destination (j_compress_ptr cinfo)
+term_custom_destination(j_compress_ptr cinfo)
 {
-  my_custom_dest_ptr dest = (my_custom_dest_ptr) cinfo->dest;
+  my_custom_dest_ptr dest = (my_custom_dest_ptr)cinfo->dest;
   size_t datacount = OUTPUT_BUF_SIZE - dest->pub.free_in_buffer;
 
   /* Write any data remaining in the buffer */
@@ -294,7 +294,7 @@ jpeg_stdio_dest(j_compress_ptr cinfo, FILE *outfile)
  */
 
 GLOBAL(void)
-jpeg_custom_dest (j_compress_ptr cinfo, custom_destination_func func, void *custom_stuff)
+jpeg_custom_dest(j_compress_ptr cinfo, custom_destination_func func, void *custom_stuff)
 {
   my_custom_dest_ptr dest;
 
@@ -303,7 +303,7 @@ jpeg_custom_dest (j_compress_ptr cinfo, custom_destination_func func, void *cust
    */
   if (cinfo->dest == NULL) {    /* first time for this JPEG object? */
     cinfo->dest = (struct jpeg_destination_mgr *)
-      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+      (*cinfo->mem->alloc_small) ((j_common_ptr)cinfo, JPOOL_PERMANENT,
                                   sizeof(my_custom_destination_mgr));
   } else if (cinfo->dest->init_destination != init_custom_destination) {
     /* It is unsafe to reuse the existing destination manager unless it was
@@ -315,7 +315,7 @@ jpeg_custom_dest (j_compress_ptr cinfo, custom_destination_func func, void *cust
     ERREXIT(cinfo, JERR_BUFFER_SIZE);
   }
 
-  dest = (my_custom_dest_ptr) cinfo->dest;
+  dest = (my_custom_dest_ptr)cinfo->dest;
   dest->pub.init_destination = init_custom_destination;
   dest->pub.empty_output_buffer = empty_custom_output_buffer;
   dest->pub.term_destination = term_custom_destination;
